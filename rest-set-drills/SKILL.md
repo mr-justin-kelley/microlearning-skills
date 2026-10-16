@@ -32,7 +32,8 @@ Each drill teaches one idea. Order the deck so it builds: basics first, applicat
 
 **Writing rules** (the user reads these mid-workout):
 - Prompt: one or two short sentences.
-- Options: under about 15 words each, similar in length, and every wrong option plausible. Don't let the correct answer be the longest one every time, and vary its position.
+- Options: under about 15 words each, similar in length, and every wrong option plausible. Don't let the correct answer be the longest one every time.
+- Ordering: write options, sort items and match pairs in any order. The page shuffles the display order of `mc`, `multi`, `sort`, `match` and `order` per drill and per session, so the answer position never follows a pattern. Indexes in `a` and sort bucket numbers always refer to the order as written. True/false buttons stay fixed.
 - `why`: 1–3 plain sentences explaining the reason. Where it helps, add a "Use it:" example sentence or a source detail.
 - `lock`: a takeaway of 10 words or fewer to say out loud. Each lock is distinct, since the end screen lists them all.
 - Plain language. No em-dash asides, no "not X but Y" constructions.
@@ -166,14 +167,17 @@ __DRILLS__
 
 const KEY="__KEY__",EX=__EX__,SETS=__SETS__;
 const KIND={mc:"Pick one",tf:"True or false",multi:"Select all that apply",order:"Put in order",match:"Match the pairs",sort:"Sort it",recall:"Say it out loud"};
-let state={i:0,res:{}};
-try{const s=JSON.parse(localStorage.getItem(KEY)||"null");if(s&&typeof s.i==="number"&&s.res)state=s}catch(e){}
+const newSeed=()=>Math.floor(Math.random()*2147483647);
+let state={i:0,res:{},seed:newSeed()};
+try{const s=JSON.parse(localStorage.getItem(KEY)||"null");if(s&&typeof s.i==="number"&&s.res)state=Object.assign({seed:newSeed()},s)}catch(e){}
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}};
 const grid=document.getElementById("grid"),card=document.getElementById("card"),scoreEl=document.getElementById("score");
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-function shuffled(arr,seed){const a=arr.map((v,k)=>k);let x=seed*9301+49297;
-  for(let k=a.length-1;k>0;k--){x=(x*9301+49297)%233280;const j=Math.floor(x/233280*(k+1));[a[k],a[j]]=[a[j],a[k]]}
-  if(a.every((v,k)=>v===k)&&a.length>1)a.push(a.shift());return a}
+/* Display order is shuffled per drill and per session; answers are stored by original index. */
+function rng(seed){let t=seed>>>0;return()=>{t=(t+0x6D2B79F5)>>>0;let r=Math.imul(t^(t>>>15),1|t);r^=r+Math.imul(r^(r>>>7),61|r);return((r^(r>>>14))>>>0)/4294967296}}
+function shuffled(arr,salt){const a=arr.map((v,k)=>k),rand=rng(state.seed+state.i*7919+salt*104729);
+  for(let k=a.length-1;k>0;k--){const j=Math.floor(rand()*(k+1));[a[k],a[j]]=[a[j],a[k]]}
+  if(a.length>1&&a.every((v,k)=>v===k))a.push(a.shift());return a}
 const el=(h)=>{const t=document.createElement("template");t.innerHTML=h.trim();return t.content.firstChild};
 
 function renderGrid(){
@@ -204,7 +208,8 @@ R.mc=(d,box,done)=>{
   const tf=d.type==="tf",opts=tf?["True","False"]:d.opts,a=tf?(d.a?0:1):d.a;
   const wrap=el(`<div class="${tf?"tf":"opts"}"></div>`);box.appendChild(wrap);
   const bs=opts.map((o,k)=>{const b=el(`<button class="opt" id="o${state.i}-${k}">${esc(o)}</button>`);
-    b.onclick=()=>{paint(k);finish(k===a,k)};wrap.appendChild(b);return b});
+    b.onclick=()=>{paint(k);finish(k===a,k)};return b});
+  (tf?opts.map((o,k)=>k):shuffled(opts,1)).forEach(k=>wrap.appendChild(bs[k]));
   function paint(p){bs.forEach((b,k)=>{b.disabled=true;if(k===a)b.classList.add("right");else if(k===p)b.classList.add("wrong")})}
   if(done)paint(done.resp);
 };
@@ -212,7 +217,8 @@ R.tf=R.mc;
 R.multi=(d,box,done)=>{
   const sel=new Set(),wrap=el(`<div class="opts"></div>`);box.appendChild(wrap);
   const bs=d.opts.map((o,k)=>{const b=el(`<button class="opt" aria-pressed="false" id="o${state.i}-${k}">${esc(o)}</button>`);
-    b.onclick=()=>{sel.has(k)?sel.delete(k):sel.add(k);b.classList.toggle("sel");b.setAttribute("aria-pressed",sel.has(k))};wrap.appendChild(b);return b});
+    b.onclick=()=>{sel.has(k)?sel.delete(k):sel.add(k);b.classList.toggle("sel");b.setAttribute("aria-pressed",sel.has(k))};return b});
+  shuffled(d.opts,2).forEach(k=>wrap.appendChild(bs[k]));
   const chk=el(`<button class="btn">Check</button>`);box.appendChild(chk);
   function paint(p){const ps=new Set(p);chk.hidden=true;bs.forEach((b,k)=>{b.disabled=true;b.classList.remove("sel");
     const inA=d.a.includes(k);if(inA&&ps.has(k))b.classList.add("right");else if(!inA&&ps.has(k))b.classList.add("wrong");else if(inA)b.classList.add("missed")})}
@@ -220,7 +226,7 @@ R.multi=(d,box,done)=>{
   if(done)paint(done.resp);
 };
 R.order=(d,box,done)=>{
-  const order=shuffled(d.items,state.i+3),picked=[];
+  const order=shuffled(d.items,3),picked=[];
   box.appendChild(el(`<p class="hint">Tap the items in the right order.</p>`));
   const out=el(`<div class="olist"></div>`),pool=el(`<div class="opts"></div>`);box.appendChild(out);box.appendChild(pool);
   const clr=el(`<button class="btn ghost">Clear</button>`);box.appendChild(clr);
@@ -237,9 +243,10 @@ R.order=(d,box,done)=>{
 R.match=(d,box,done)=>{
   box.appendChild(el(`<p class="hint">Tap one on the left, then its partner on the right.</p>`));
   const g=el(`<div class="match"><div class="col"></div><div class="col"></div></div>`);box.appendChild(g);
-  const [L,Rc]=g.children,rord=shuffled(d.pairs,state.i+7);let cur=null,miss=0,matched=0;
+  const [L,Rc]=g.children,rord=shuffled(d.pairs,7);let cur=null,miss=0,matched=0;
   const lb=d.pairs.map((p,k)=>{const b=el(`<button class="opt" id="l${state.i}-${k}">${esc(p[0])}</button>`);
-    b.onclick=()=>{lb.forEach(x=>x.classList.remove("sel"));cur=k;b.classList.add("sel")};L.appendChild(b);return b});
+    b.onclick=()=>{lb.forEach(x=>x.classList.remove("sel"));cur=k;b.classList.add("sel")};return b});
+  shuffled(d.pairs,4).forEach(k=>L.appendChild(lb[k]));
   const rb=[];rord.forEach(k=>{const b=el(`<button class="opt" id="r${state.i}-${k}">${esc(d.pairs[k][1])}</button>`);
     b.onclick=()=>{if(cur===null)return;
       if(cur===k){[lb[k],b].forEach(x=>{x.classList.remove("sel");x.classList.add("right");x.disabled=true});cur=null;matched++;
@@ -252,7 +259,8 @@ R.sort=(d,box,done)=>{
   const pick={},rows=[],wrap=el(`<div class="opts"></div>`);box.appendChild(wrap);
   d.items.forEach((it,k)=>{const row=el(`<div class="srow"><span>${esc(it[0])}</span><div class="bk">${d.buckets.map((bn,j)=>`<button aria-pressed="false" data-j="${j}" id="s${state.i}-${k}-${j}">${esc(bn)}</button>`).join("")}</div></div>`);
     row.querySelectorAll("button").forEach(b=>b.onclick=()=>{pick[k]=+b.dataset.j;row.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));chk.disabled=Object.keys(pick).length<d.items.length});
-    rows.push(row);wrap.appendChild(row)});
+    rows.push(row)});
+  shuffled(d.items,5).forEach(k=>wrap.appendChild(rows[k]));
   const chk=el(`<button class="btn" disabled>Check</button>`);box.appendChild(chk);
   function paint(p){chk.hidden=true;rows.forEach((row,k)=>{row.querySelectorAll("button").forEach(b=>{b.disabled=true;b.setAttribute("aria-pressed",+b.dataset.j===p[k])});
     row.classList.add(p[k]===d.items[k][1]?"right":"wrong");
@@ -277,7 +285,7 @@ function render(){
     card.innerHTML=`<div class="reveal finish"><div class="tag">Session complete · ${ok} of ${DRILLS.length} solid</div>
       <p class="prompt">__ENDTITLE__</p><ul>${DRILLS.map((d,k)=>{const r=state.res[k];return `<li><span class="mk ${r&&r.ok?"ok":"rv"}">${r&&r.ok?"Solid":"Review"}</span><span>${esc(d.lock)}</span></li>`}).join("")}</ul>
       <div class="row"><button class="btn ghost" id="again">Start over</button></div></div>`;
-    card.querySelector("#again").onclick=()=>{state={i:0,res:{}};save();render();window.scrollTo(0,0)};
+    card.querySelector("#again").onclick=()=>{state={i:0,res:{},seed:newSeed()};save();render();window.scrollTo(0,0)};
     return;
   }
   const d=DRILLS[state.i],ex=Math.floor(state.i/SETS)+1,r=state.i%SETS+1,done=state.res[state.i];
