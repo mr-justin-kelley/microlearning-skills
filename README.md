@@ -4,9 +4,9 @@ Two Claude skills that turn the rest periods in your workout, or any other spare
 
 I built these to make use of the time between sets at the gym. A typical lifting session has about 18 rest periods, and at around 90 seconds each, that's nearly half an hour of found time per workout. These skills turn that time into a guided lesson or a tap-to-answer quiz you can work through one rest period at a time.
 
-You can read the full story of how I built them in my article, [Found Time: How I Turned My Rest Periods Into a Classroom With AI](ARTICLE_LINK).
+You can read the full story of how I built them in my article, [Found Time: How I Turned My Rest Periods Into a Classroom With AI](https://justinmkelley.substack.com/p/found-time-how-i-turned-the-gym-into).
 
-![A rest-set drill card on a phone](images/drill-card.png)
+[![A rest-set drill card on a phone](images/drill-card.png)]
 
 ## What's included
 
@@ -41,7 +41,7 @@ The instructions are written in plain language, so feel free to open them up and
 
 If you make changes, remember to zip the skill's folder again before uploading it, and keep the folder name the same as the skill name.
 
-If you improve on them, I'd love to see what you come up with. Open an issue or a pull request, or find me on [LinkedIn](LINKEDIN_LINK).
+If you improve on them, I'd love to see what you come up with. Open an issue or a pull request, or find me on [LinkedIn](https://www.linkedin.com/in/justin-m-kelley).
 
 ## License
 
